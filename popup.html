@@ -1,15 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>English to Russian Translator</title>
-  <style>
-    body { width: 300px; padding: 10px; }
-    button { margin-top: 10px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translation Toggle</title>
+    <style>
+        body {
+            width: 300px;
+            padding: 10px;
+            font-family: Arial, sans-serif;
+        }
+        button {
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-  <h1>Translator Control</h1>
-  <button id="toggle">Toggle Translation</button>
-  <script src="popup.js"></script>
+    <h1>Translation Status</h1>
+    <div id="status"></div>
+    <button id="toggle">Toggle Translation</button>
+    <script src="popup.js"></script>
 </body>
 </html>

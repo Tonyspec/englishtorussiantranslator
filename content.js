@@ -1,4 +1,5 @@
-const translationMap = {
+// Mapping for English to Russian transcription
+const transcriptionMap = {
     'A': 'А', 'a': 'а',
     'B': 'Б', 'b': 'б',
     'V': 'В', 'v': 'в',
@@ -29,24 +30,93 @@ const translationMap = {
     '"': 'Ъ', '`': 'ъ',
     'Y': 'Ы', 'y': 'ы',
     '\'': 'Ь', '`': 'ь',
-    'E': 'Э', 'e': 'э',
+    'Eh': 'Э', 'eh': 'э', 
     'Yu': 'Ю', 'yu': 'ю',
     'Ya': 'Я', 'ya': 'я',
-    'Q': 'Я', 'q': 'я', // Q is often used for Я on transliteration
-    'W': 'В', 'w': 'в', // W can be mapped to В in some transliterations
-    'X': 'Кс', 'x': 'кс', // X doesn't have a direct counterpart; typically transliterated as KS
-    'J': 'Ж', 'j': 'ж'  // J can also be mapped to Ж in some contexts
 };
 
-document.addEventListener('keydown', function(event) {
-    if (event.key in translationMap) {
-        event.preventDefault();
-        const input = event.target;
-        if (input && (input.tagName === 'INPUT' || input.tagName === 'TEXTAREA')) {
-            const start = input.selectionStart;
-            const end = input.selectionEnd;
-            input.value = input.value.substring(0, start) + translationMap[event.key] + input.value.substring(end);
-            input.selectionStart = input.selectionEnd = start + 1;
+let transcriptionActive = false;
+let buffer = ''; // Buffer to store characters for multi-character transcription
+
+// Function to transcribe text in real time, considering multi-character mappings
+function transcribeText(element, key, isBackspace = false) {
+    if (isBackspace) {
+        // When backspace is pressed, remove the last character from buffer
+        buffer = buffer.slice(0, -1);
+    } else {
+        buffer += key.toLowerCase(); // Add new input to buffer
+    }
+    
+    let newValue = '';
+    let i = 0;
+    
+    while (i < buffer.length) {
+        let matchFound = false;
+        // Sort keys by length descending to match longer sequences first
+        const sortedKeys = Object.keys(transcriptionMap).sort((a, b) => b.length - a.length);
+        
+        for (let transKey of sortedKeys) {
+            if (buffer.slice(i, i + transKey.length) === transKey.toLowerCase()) {
+                newValue += transcriptionMap[transKey];
+                i += transKey.length;
+                matchFound = true;
+                break;
+            }
         }
+        if (!matchFound) {
+            newValue += buffer[i];
+            i++;
+        }
+    }
+    
+    element.value = newValue;
+    // Reset buffer for next input but keep the last few characters for context
+    buffer = newValue.split('').map(char => {
+        for (let key in transcriptionMap) {
+            if (transcriptionMap[key] === char) return key.toLowerCase();
+        }
+        return char;
+    }).join(''); // Keep entire buffer instead of just last few characters
+}
+
+// Event listener for real-time transcription
+function startTranscription() {
+    document.body.addEventListener('input', function(event) {
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.isContentEditable) {
+            if (event.inputType === 'deleteContentBackward') {
+                transcribeText(event.target, '', true);
+            } else {
+                transcribeText(event.target, event.data || '');
+            }
+        }
+    });
+}
+
+// Stop transcription by removing the event listener
+function stopTranscription() {
+    document.body.removeEventListener('input', function(event) {
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.isContentEditable) {
+            transcribeText(event.target, event.data || '');
+        }
+    });
+}
+
+// Listen for messages from the popup to toggle transcription
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+    if (request.action === "toggleTranscription") {
+        transcriptionActive = request.value;
+        if (transcriptionActive) {
+            startTranscription();
+        } else {
+            stopTranscription();
+        }
+    }
+});
+
+// Initially check if transcription should be active
+chrome.storage.local.get(['transcriptionActive'], function(result) {
+    if (result.transcriptionActive) {
+        transcriptionActive = true;
+        startTranscription();
     }
 });
